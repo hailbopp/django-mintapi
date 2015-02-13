@@ -1,0 +1,9 @@
+*.pyc
+
+## Virtual Environments
+/python2
+/python3
+.Python
+
+## IDE settings
+/.idea
