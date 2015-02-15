@@ -22,8 +22,8 @@ class Account(MintModel):
         ('OTHER', 'Other')
     )
 
-    mint_id = models.IntegerField()
-    account_type = models.CharField(max_length=64)
+    mint_id = models.PositiveIntegerField()
+    account_type = models.CharField(max_length=64, choices=USAGE_TYPE_CHOICES)
     account_name = models.CharField(max_length=512)
     long_name = models.CharField(max_length=512)
     currency = models.CharField()
@@ -36,10 +36,12 @@ class Account(MintModel):
 
 class AccountBalance(MintModel):
     account = models.ForeignKey(Account, related_name='historical_balances')
+    retrieved_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField()
 
     balance = models.DecimalField(max_digits=20, decimal_places=2)
     current_interest_rate = models.DecimalField(max_digits=6, decimal_places=5)
+    current_account_limit = models.DecimalField(max_digits=20, decimal_places=2)
 
     next_due_date = models.DateTimeField()
     next_due_amount = models.DecimalField(max_digits=20, decimal_places=2)
