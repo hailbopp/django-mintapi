@@ -1,6 +1,9 @@
+from __future__ import print_function
+
 import datetime
 import json
 import mintapi
+from decimal import Decimal
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -27,6 +30,7 @@ class MintUser(models.Model):
         mint = mintapi.Mint(self.username, self.password)
 
         accounts = mint.get_accounts(get_detail=True)
+        print("Pulled %d accounts" % len(accounts))
         for account in accounts:
             #account_body = json.dumps(account)
             if not self.account_set.filter(mint_id=account['accountId']).exists():
@@ -54,6 +58,33 @@ class MintUser(models.Model):
             new_balance.next_due_amount = account.get('dueAmt', None)
 
             new_balance.save()
+
+            mint_transactions = mint.get_transactions(detailed=True, account_id=dj_account.mint_id)
+
+            print("Got %d transactions for account %d" % (len(mint_transactions), dj_account.mint_id))
+
+            for t in mint_transactions:
+                if t['isPending']:
+                    continue
+
+                if not dj_account.transaction_set.filter(mint_id=t['id']).exists():
+                    amount = Decimal(t['amount'].replace('$', '').replace(',', ''))
+                    category, category_was_created = TransactionCategory.objects.get_or_create(owner=self, mint_id=t['categoryId'], defaults={'name': t['category']})
+                    merchant, merchant_was_created = Merchant.objects.get_or_create(original_name=t['omerchant'], defaults={'name': t['merchant']})
+
+                    dj_account.transaction_set.create(mint_id=t['id'], merchant=merchant, category=category, amount=amount,
+                                                      date=t['dateInDate'],
+                                                      is_check=t['isCheck'],
+                                                      is_child=t['isChild'],
+                                                      is_debit=t['isDebit'],
+                                                      is_duplicate=t['isDuplicate'],
+                                                      is_edited=t['isEdited'],
+                                                      is_first_date=t['isFirstDate'],
+                                                      is_linked_to_rule=t['isLinkedToRule'],
+                                                      is_matched=t['isMatched'],
+                                                      is_pending=t['isPending'],
+                                                      is_spending=t['isSpending'],
+                                                      is_transfer=t['isTransfer'],)
 
 
 class Account(MintModel):
@@ -90,10 +121,13 @@ class AccountBalance(MintModel):
 
 class TransactionCategory(MintModel):
     name = models.CharField(max_length=512)
+    mint_id = models.PositiveIntegerField()
+    owner = models.ForeignKey(MintUser)
 
 
 class Merchant(MintModel):
     name = models.CharField(max_length=512)
+    original_name = models.CharField(max_length=512)
 
 
 class Transaction(MintModel):
