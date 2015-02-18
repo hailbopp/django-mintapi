@@ -5,5 +5,10 @@
 /python3
 .Python
 
+## Test project
+/mint_test
+manage.py
+*.sqlite3
+
 ## IDE settings
 /.idea
